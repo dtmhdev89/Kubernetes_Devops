@@ -56,4 +56,23 @@ ifeq ($(PLATFORM), "x86_64")
 
 	curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
 	sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
+
+	sudo apt install conntrack
+
+	VERSION="v1.33.0"
+	wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+	sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
+	rm -f crictl-$VERSION-linux-amd64.tar.gz
+
+	wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.17/cri-dockerd_0.3.17.3-0.ubuntu-jammy_amd64.deb
+	apt-get install ./cri-dockerd_0.3.17.3-0.ubuntu-jammy_amd64.deb
+
+	CNI_PLUGIN_VERSION=v1.7.1
+	CNI_PLUGIN_TAR="cni-plugins-linux-amd64-$CNI_PLUGIN_VERSION.tgz" # change arch if not on amd64
+	CNI_PLUGIN_INSTALL_DIR="/opt/cni/bin"
+
+	curl -LO "https://github.com/containernetworking/plugins/releases/download/$CNI_PLUGIN_VERSION/$CNI_PLUGIN_TAR"
+	sudo mkdir -p "$CNI_PLUGIN_INSTALL_DIR"
+	sudo tar -xf "$CNI_PLUGIN_TAR" -C "$CNI_PLUGIN_INSTALL_DIR"
+	rm "$CNI_PLUGIN_TAR"
 endif
