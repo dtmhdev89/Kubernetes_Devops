@@ -5,10 +5,16 @@ set -e
 
 # Run the Makefile target
 echo "------Start installation"
+echo "***********Uninstall docker ce if existed"
+make uninstall_docker_ce || true
+
+echo "*********Install Docker"
 make install_docker_ce
 
-make install_kubecttl
+echo "*********Install kubectl"
+make install_kubectl
 
-make install_minicube
+echo "*********Install minikube"
+make install_minikube
 
 echo "-------Completed"
