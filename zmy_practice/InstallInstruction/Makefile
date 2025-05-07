@@ -1,6 +1,10 @@
 # variables
 PLATFORM = $(shell uname -m)
 
+install_supports:
+	sudo apt-get update
+	sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
 uninstall_docker_ce:
 	sudo rm -rf /var/lib/docker
 	sudo rm -rf /var/lib/containerd
@@ -86,3 +90,23 @@ ifeq ($(PLATFORM), x86_64)
 	sudo tar -xf $$CNI_PLUGIN_TAR -C "$$CNI_PLUGIN_INSTALL_DIR"; \
 	rm $$CNI_PLUGIN_TAR
 endif
+
+install_k8s_tools:
+	sudo apt-get install -y docker.io
+	sudo mkdir -p -m 755 /etc/apt/keyrings
+	curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+	echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+	sudo apt-get update
+	sudo apt-get install -y --allow-change-held-packages kubelet kubeadm kubectl
+	sudo apt-mark hold kubelet kubeadm kubectl
+
+install_calico_network_plugin:
+	kubectl apply -f https://calico-v3-25.netlify.app/archive/v3.25/manifests/calico.yaml
+
+untain_the_master:
+# so that it will be available for scheduling workloads
+	kubectl taint nodes --all node-role.kubernetes.io/master-
+
+
+.PHONY: install_supports, uninstall_docker_ce, install_docker_ce, install_kubectl, install_minikube, install_k8s_tools, \
+	install_calico_network_plugin, untain_the_master
