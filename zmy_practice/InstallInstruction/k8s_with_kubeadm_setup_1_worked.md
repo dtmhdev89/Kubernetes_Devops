@@ -1,15 +1,20 @@
-Kubeadm Setup Guide with Docker on Linux
+# Kubeadm Setup Guide with Docker on Linux
+
 This guide provides detailed steps to set up a Kubernetes cluster using kubeadm and Docker on Linux servers.
 
-System Requirements
-Linux servers (Ubuntu 22.04 recommended)
-Minimum 2 CPUs
-2GB RAM per machine
-Full network connectivity between machines
-Unique hostname, MAC address, and product_uuid
-Step 1: Update System and Configure Prerequisites
+## System Requirements
+
+- Linux servers (Ubuntu 22.04 recommended)
+- Minimum 2 CPUs
+- 2GB RAM per machine
+- Full network connectivity between machines
+- Unique hostname, MAC address, and product_uuid
+
+## Step 1: Update System and Configure Prerequisites
+
 Run on all nodes (master and workers):
 
+```bash
 # Update the system
 sudo apt-get update
 sudo apt-get upgrade -y
@@ -21,6 +26,15 @@ sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-relea
 sudo swapoff -a
 # Make swap off persistent across reboots
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# Load required kernel modules
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
 
 # Create the containerd configuration directory:
 
@@ -38,15 +52,6 @@ sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/con
 
 sudo systemctl restart containerd
 
-# Load required kernel modules
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
 # Configure network settings for Kubernetes
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
@@ -56,9 +61,13 @@ EOF
 
 # Apply sysctl params without reboot
 sudo sysctl --system
-Step 2: Install Docker CE (v24.0.7)
+```
+
+## Step 2: Install Docker CE (v24.0.7)
+
 Run on all nodes:
 
+```bash
 # Add Docker's official GPG key
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -92,9 +101,13 @@ sudo mkdir -p /etc/systemd/system/docker.service.d
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 sudo systemctl enable docker
-Step 3: Install kubeadm, kubelet, and kubectl (v1.28.5)
+```
+
+## Step 3: Install kubeadm, kubelet, and kubectl (v1.28.5)
+
 Run on all nodes:
 
+```bash
 # Add Kubernetes GPG key
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
@@ -107,9 +120,13 @@ sudo apt-get install -y kubelet=1.28.5-1.1 kubeadm=1.28.5-1.1 kubectl=1.28.5-1.1
 
 # Pin package versions to prevent accidental upgrades
 sudo apt-mark hold kubelet kubeadm kubectl
-Step 4: Initialize Kubernetes Control Plane (Master Node Only)
+```
+
+## Step 4: Initialize Kubernetes Control Plane (Master Node Only)
+
 Run on the master node:
 
+```bash
 # Initialize the control plane
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version=1.28.5
 
@@ -119,17 +136,13 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 # Install Calico network plugin (v3.27.0)
-```
+
 # use this look goods
 kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-```
 
-```
-# this could sometime not activate the calico pods
+# This one could sometime cause calico pods not running
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
-```
-
 
 # OR Install Flannel network plugin
 # kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
@@ -139,48 +152,61 @@ kubectl get pods -A
 
 # Generate join command for worker nodes
 kubeadm token create --print-join-command
-Step 5: Join Worker Nodes
+```
+
+## Step 5: Join Worker Nodes
+
 Run the generated join command on worker nodes:
 
+```bash
 # This is an example. Use the actual command from the previous step
 sudo kubeadm join <master-node-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
-Step 6: Verify Cluster
+```
+
+## Step 6: Verify Cluster
+
 On the master node:
 
+```bash
 # Check node status
 kubectl get nodes
 
 # Verify all system pods are running
 kubectl get pods -n kube-system
-Step 7: Deploy Test Application (Optional)
+```
+
+## Step 7: Deploy Test Application (Optional)
+
 On the master node:
 
+```bash
 # Deploy nginx test deployment
 kubectl create deployment nginx --image=nginx:1.25.3
 kubectl expose deployment nginx --port=80 --type=NodePort
 
 # Check service details
 kubectl get svc nginx
-Package Versions Summary
-Docker CE: 24.0.7
-kubelet: 1.28.5
-kubeadm: 1.28.5
-kubectl: 1.28.5
-Calico: 3.27.0 (networking plugin)
-Ubuntu: 22.04 LTS (recommended OS)
-containerd.io: Latest from Docker repo
-Troubleshooting
-Check logs: sudo journalctl -xeu kubelet
+```
 
-Verify Docker status: sudo systemctl status docker
+## Package Versions Summary
 
-Reset kubeadm (if needed): sudo kubeadm reset
+- Docker CE: 24.0.7
+- kubelet: 1.28.5
+- kubeadm: 1.28.5
+- kubectl: 1.28.5
+- Calico: 3.27.0 (networking plugin)
+- Ubuntu: 22.04 LTS (recommended OS)
+- containerd.io: Latest from Docker repo
 
-Ensure firewall allows required ports:
+## Troubleshooting
 
-TCP 6443: Kubernetes API server
-TCP 2379-2380: etcd
-TCP 10250: Kubelet API
-TCP 10251: kube-scheduler
-TCP 10252: kube-controller-manager
-TCP 8472: Flannel VXLAN (if using Flannel)
+- Check logs: `sudo journalctl -xeu kubelet`
+- Verify Docker status: `sudo systemctl status docker`
+- Reset kubeadm (if needed): `sudo kubeadm reset`
+- Ensure firewall allows required ports:
+  - TCP 6443: Kubernetes API server
+  - TCP 2379-2380: etcd
+  - TCP 10250: Kubelet API
+  - TCP 10251: kube-scheduler
+  - TCP 10252: kube-controller-manager
+  - TCP 8472: Flannel VXLAN (if using Flannel)
