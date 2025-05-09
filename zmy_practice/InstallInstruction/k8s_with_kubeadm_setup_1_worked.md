@@ -251,3 +251,11 @@ sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/con
 
 sudo systemctl restart containerd
 ```
+
+### On worker node, reset kubeadm to join another cluster
+
+```bash
+kubeadm reset
+
+# then join another cluster
+```
