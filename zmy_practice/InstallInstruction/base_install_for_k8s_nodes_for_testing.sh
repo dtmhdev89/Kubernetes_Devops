@@ -82,18 +82,3 @@ sudo apt-get install -y kubelet=1.28.5-1.1 kubeadm=1.28.5-1.1 kubectl=1.28.5-1.1
 # Pin package versions to prevent accidental upgrades
 sudo apt-mark hold kubelet kubeadm kubectl
 
-# Create the containerd configuration directory:
-
-sudo mkdir -p /etc/containerd
-
-# Generate a default configuration and modify it:
-
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-
-# Edit the config to use systemd cgroup driver:
-
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-
-# Restart containerd:
-
-sudo systemctl restart containerd

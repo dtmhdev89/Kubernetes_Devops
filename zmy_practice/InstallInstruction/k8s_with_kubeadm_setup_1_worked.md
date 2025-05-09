@@ -210,3 +210,44 @@ kubectl get svc nginx
   - TCP 10251: kube-scheduler
   - TCP 10252: kube-controller-manager
   - TCP 8472: Flannel VXLAN (if using Flannel)
+
+## Some detected issues and their solution:
+
+### Error 1: crictl with containerd
+
+- Error Description:
+```bash
+# Error with containerd when running crictl pods
+crictl pods
+WARN[0000] runtime connect using default endpoints: [unix:///var/run/dockershim.sock unix:///run/containerd/containerd.sock unix:///run/crio/crio.sock unix:///var/run/cri-dockerd.sock]. As the default settings are now deprecated, you should set the endpoint instead. 
+ERRO[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///var/run/dockershim.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /var/run/dockershim.sock: connect: no such file or directory" 
+```
+
+- Solution:
+
+```bash
+# 1 Set the default endpoint for crictl:
+
+cat <<EOF | sudo tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+debug: false
+EOF
+
+# Create the containerd configuration directory:
+
+sudo mkdir -p /etc/containerd
+
+# Generate a default configuration and modify it:
+
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+
+# Edit the config to use systemd cgroup driver:
+
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+
+# Restart containerd:
+
+sudo systemctl restart containerd
+```
